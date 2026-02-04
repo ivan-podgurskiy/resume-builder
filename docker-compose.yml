@@ -1,0 +1,70 @@
+services:
+  # PostgreSQL Database (using port 5433 to avoid conflicts)
+  postgres:
+    image: postgres:16-alpine
+    container_name: resume-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resume_builder
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and job queue
+  redis:
+    image: redis:7-alpine
+    container_name: resume-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./resume-backend
+      dockerfile: Dockerfile
+    container_name: resume-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./resume-backend/.env
+    environment:
+      # Override database/redis URLs for Docker networking
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/resume_builder?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Frontend (SvelteKit)
+  frontend:
+    build:
+      context: ./resume-frontend
+      dockerfile: Dockerfile
+    container_name: resume-frontend
+    ports:
+      - "4000:3000"
+    environment:
+      - NODE_ENV=production
+      - PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
