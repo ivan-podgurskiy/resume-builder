@@ -121,7 +121,8 @@ type LayoutConfig struct {
 	Columns       int      `json:"columns"`        // 1 or 2
 	PhotoPosition string   `json:"photo_position"` // left, right, top, none
 	SectionOrder  []string `json:"section_order"`
-	PageBreak     string   `json:"page_break"` // auto, avoid, force
+	PageBreak     string   `json:"page_break"`     // auto, avoid, force
+	LayoutVariant string   `json:"layout_variant"` // standard, sidebar_dark
 }
 
 type StyleConfig struct {

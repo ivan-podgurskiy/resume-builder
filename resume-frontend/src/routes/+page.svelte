@@ -1,9 +1,42 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Button, Card } from '$components/ui';
-	import { FileText, Sparkles, Download, Shield, Zap, Users } from 'lucide-svelte';
+	import { FileText, Sparkles, Download, Shield, Zap, Users, Layout, Loader2 } from 'lucide-svelte';
 	import { isAuthenticated } from '$stores/auth';
+	import { api } from '$lib/api/client';
+	import type { Template } from '$types';
 
 	let heroImageError = false;
+	let templates: Template[] = [];
+	let templatesLoading = true;
+	let templateFilter: string = 'all';
+
+	const templateCategories = [
+		{ id: 'all', label: 'All' },
+		{ id: 'modern', label: 'Modern' },
+		{ id: 'classic', label: 'Classic' },
+		{ id: 'creative', label: 'Creative' },
+		{ id: 'minimalist', label: 'Minimalist' },
+		{ id: 'tech', label: 'Tech' },
+		{ id: 'executive', label: 'Executive' },
+		{ id: 'academic', label: 'Academic' }
+	];
+
+	$: filteredTemplates =
+		templateFilter === 'all'
+			? templates
+			: templates.filter((t) => t.category === templateFilter);
+
+	onMount(async () => {
+		try {
+			const result = await api.listTemplates();
+			templates = result.templates;
+		} catch {
+			templates = [];
+		} finally {
+			templatesLoading = false;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -32,7 +65,7 @@
 					Features
 				</a>
 				<a
-					href="#templates"
+					href="/templates"
 					class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
 				>
 					Templates
@@ -142,27 +175,100 @@
 	</section>
 
 	<!-- Templates Section -->
-	<section id="templates" class="scroll-mt-20 border-t py-24 lg:py-32">
+	<section id="templates" class="scroll-mt-20 border-t bg-muted/20 py-24 lg:py-32">
 		<div class="container mx-auto px-4">
 			<div class="mx-auto max-w-2xl text-center">
 				<h2 class="font-display mb-4 text-3xl font-normal tracking-tight sm:text-4xl">
 					Professional Templates
 				</h2>
 				<p class="text-muted-foreground">
-					Choose from professionally designed templates. Customize colors, fonts, and layouts to
-					match your style.
+					Choose from ATS-friendly templates. Customize colors, fonts, and layouts to match your
+					style and industry.
 				</p>
 			</div>
-			<!-- Template grid placeholder - to be populated with API data -->
-			<div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{#each [1, 2, 3] as _}
-					<Card class="aspect-[3/4] bg-muted/50"></Card>
+
+			<!-- Category filter -->
+			<div class="mt-10 flex flex-wrap justify-center gap-2">
+				{#each templateCategories as category}
+					<button
+						type="button"
+						class="rounded-full px-4 py-2 text-sm font-medium transition-colors {templateFilter ===
+						category.id
+							? 'bg-primary text-primary-foreground'
+							: 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'}"
+						on:click={() => (templateFilter = category.id)}
+					>
+						{category.label}
+					</button>
 				{/each}
 			</div>
-			<div class="mt-8 text-center">
-				<a href="/signup">
-					<Button variant="outline">Browse All Templates</Button>
-				</a>
+
+			<!-- Template grid -->
+			<div class="mt-12">
+				{#if templatesLoading}
+					<div class="flex justify-center py-16">
+						<Loader2 class="h-10 w-10 animate-spin text-muted-foreground" />
+					</div>
+				{:else if filteredTemplates.length === 0}
+					<div class="py-16 text-center">
+						<Layout class="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+						<p class="text-muted-foreground">
+							{templateFilter === 'all' ? 'No templates available yet.' : `No ${templateFilter} templates.`}
+						</p>
+						<a href="/signup" class="mt-4 inline-block">
+							<Button variant="outline">Get Started</Button>
+						</a>
+					</div>
+				{:else}
+					<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{#each filteredTemplates as template (template.id)}
+							<a
+								href="/templates"
+								class="group block"
+							>
+								<Card
+									class="overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30"
+								>
+									<!-- Preview -->
+									<div class="aspect-[8.5/11] overflow-hidden bg-white">
+										<img
+											src={template.preview_image_url || `/api/v1/templates/${template.id}/preview-image`}
+											alt={template.name}
+											class="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+										/>
+									</div>
+									<!-- Info -->
+									<div class="p-4">
+										<div class="flex items-start justify-between gap-2">
+											<h3 class="font-semibold">{template.name}</h3>
+											{#if template.is_premium}
+												<span
+													class="shrink-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+												>
+													Pro
+												</span>
+											{/if}
+										</div>
+										<p class="mt-1 line-clamp-2 text-sm text-muted-foreground">
+											{template.description}
+										</p>
+										<div class="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+											<span class="flex items-center gap-1">
+												<Shield class="h-3.5 w-3.5" />
+												ATS {template.ats_score}%
+											</span>
+										</div>
+									</div>
+								</Card>
+							</a>
+						{/each}
+					</div>
+					<div class="mt-12 text-center">
+						<a href="/templates">
+							<Button size="lg">Browse All Templates</Button>
+						</a>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</section>

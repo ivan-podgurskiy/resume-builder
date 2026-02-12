@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { Button, Card } from '$components/ui';
@@ -15,10 +16,20 @@
 		Clock,
 		Loader2,
 		File as FileIcon,
-		X
+		X,
+		Layout,
+		Check
 	} from 'lucide-svelte';
 	import { formatDate } from '$utils';
 	import { api } from '$lib/api/client';
+	import type { Template } from '$types';
+
+	const API_BASE = '/api/v1';
+
+	function getTemplatePreviewUrl(template: Template): string {
+		if (template.preview_image_url) return template.preview_image_url;
+		return `${API_BASE}/templates/${template.id}/preview-image`;
+	}
 
 	let showNewResumeModal = false;
 	let showImportModal = false;
@@ -28,7 +39,12 @@
 	let isImporting = false;
 	let importError = '';
 	let activeMenu: string | null = null;
-	
+
+	// Template picker state
+	let templates: Template[] = [];
+	let selectedTemplateId: string | null = null;
+	let isLoadingTemplates = false;
+
 	// File upload state
 	let importMode: 'text' | 'file' = 'file';
 	let selectedFile: File | null = null;
@@ -38,13 +54,47 @@
 	const supportedFormats = ['.pdf', '.docx', '.doc', '.txt'];
 	const acceptedFileTypes = supportedFormats.join(',');
 
+	async function loadTemplates() {
+		if (templates.length === 0) {
+			isLoadingTemplates = true;
+			try {
+				const result = await api.listTemplates();
+				templates = result.templates;
+			} catch {
+				templates = [];
+			} finally {
+				isLoadingTemplates = false;
+			}
+		}
+	}
+
 	onMount(() => {
 		resumeStore.loadResumes();
+
+		// Handle ?template= param (e.g. from signup after selecting template)
+		const templateId = $page.url.searchParams.get('template');
+		if (templateId) {
+			selectedTemplateId = templateId;
+			showNewResumeModal = true;
+			loadTemplates();
+			// Clear the param from URL without navigating
+			window.history.replaceState({}, '', '/dashboard');
+		}
 	});
+
+	async function openNewResumeModal() {
+		showNewResumeModal = true;
+		selectedTemplateId = null;
+		await loadTemplates();
+	}
 
 	async function createNewResume() {
 		try {
-			const resume = await resumeStore.createResume({ title: newResumeTitle });
+			const resume = await resumeStore.createResume({
+				title: newResumeTitle,
+				template_id: selectedTemplateId || undefined
+			});
+			showNewResumeModal = false;
 			goto(`/resumes/${resume.id}/edit`);
 		} catch (error) {
 			console.error('Failed to create resume:', error);
@@ -197,7 +247,7 @@
 				<Upload class="mr-2 h-4 w-4" />
 				Import
 			</Button>
-			<Button on:click={() => (showNewResumeModal = true)}>
+			<Button on:click={openNewResumeModal}>
 				<Plus class="mr-2 h-4 w-4" />
 				New Resume
 			</Button>
@@ -227,7 +277,7 @@
 					<Upload class="mr-2 h-4 w-4" />
 					Import Existing
 				</Button>
-				<Button on:click={() => (showNewResumeModal = true)}>
+				<Button on:click={openNewResumeModal}>
 					<Plus class="mr-2 h-4 w-4" />
 					Create New
 				</Button>
@@ -319,24 +369,83 @@
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 		on:click|self={() => (showNewResumeModal = false)}
 	>
-		<Card class="w-full max-w-md p-6">
-			<h2 class="mb-4 text-xl font-semibold">Create New Resume</h2>
-			<form on:submit|preventDefault={createNewResume}>
-				<div class="mb-4">
-					<label for="title" class="mb-2 block text-sm font-medium">Resume Title</label>
-					<input
-						id="title"
-						type="text"
-						bind:value={newResumeTitle}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-						placeholder="e.g., Software Engineer Resume"
-					/>
+		<Card class="flex max-h-[90vh] w-full max-w-4xl flex-col">
+			<div class="flex items-center justify-between border-b p-4">
+				<h2 class="text-xl font-semibold">Create New Resume</h2>
+				<button class="rounded p-1 hover:bg-muted" on:click={() => (showNewResumeModal = false)}>
+					<X class="h-5 w-5" />
+				</button>
+			</div>
+
+			<form on:submit|preventDefault={createNewResume} class="flex flex-1 flex-col overflow-hidden">
+				<!-- Template selection -->
+				<div class="border-b p-4">
+					<p class="mb-3 text-sm font-medium">Choose a template (optional)</p>
+					{#if isLoadingTemplates}
+						<div class="flex justify-center py-8">
+							<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
+						</div>
+					{:else if templates.length > 0}
+						<div class="grid max-h-56 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4">
+							<button
+								type="button"
+								class="relative overflow-hidden rounded-lg border-2 transition-all {selectedTemplateId ===
+								null
+									? 'border-primary ring-2 ring-primary ring-offset-2'
+									: 'border-transparent hover:border-muted-foreground/20'}"
+								on:click={() => (selectedTemplateId = null)}
+							>
+								<div class="flex aspect-[8.5/11] items-center justify-center bg-muted">
+									<Layout class="h-8 w-8 text-muted-foreground" />
+								</div>
+								<span class="block truncate p-2 text-center text-xs font-medium">Default</span>
+							</button>
+							{#each templates as template (template.id)}
+								<button
+									type="button"
+									class="relative overflow-hidden rounded-lg border-2 transition-all {selectedTemplateId ===
+									template.id
+										? 'border-primary ring-2 ring-primary ring-offset-2'
+										: 'border-transparent hover:border-muted-foreground/20'}"
+									on:click={() => (selectedTemplateId = template.id)}
+								>
+									<div class="aspect-[8.5/11] overflow-hidden rounded-t-lg bg-white">
+										<img
+											src={getTemplatePreviewUrl(template)}
+											alt={template.name}
+											class="h-full w-full object-cover object-top"
+										/>
+									</div>
+									<span class="block truncate p-2 text-center text-xs font-medium">{template.name}</span>
+									{#if selectedTemplateId === template.id}
+										<div class="absolute right-1 top-1 rounded-full bg-primary p-0.5">
+											<Check class="h-3 w-3 text-primary-foreground" />
+										</div>
+									{/if}
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
-				<div class="flex justify-end gap-3">
-					<Button variant="outline" type="button" on:click={() => (showNewResumeModal = false)}>
-						Cancel
-					</Button>
-					<Button type="submit">Create Resume</Button>
+
+				<!-- Title and actions -->
+				<div class="flex flex-1 flex-col justify-between gap-4 p-4">
+					<div>
+						<label for="title" class="mb-2 block text-sm font-medium">Resume Title</label>
+						<input
+							id="title"
+							type="text"
+							bind:value={newResumeTitle}
+							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+							placeholder="e.g., Software Engineer Resume"
+						/>
+					</div>
+					<div class="flex justify-end gap-3">
+						<Button variant="outline" type="button" on:click={() => (showNewResumeModal = false)}>
+							Cancel
+						</Button>
+						<Button type="submit">Create Resume</Button>
+					</div>
 				</div>
 			</form>
 		</Card>

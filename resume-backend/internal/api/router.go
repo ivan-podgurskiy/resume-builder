@@ -80,7 +80,7 @@ func (r *Router) Setup() *fiber.App {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	resumeHandler := handlers.NewResumeHandler(resumeService)
-	templateHandler := handlers.NewTemplateHandler(templateRepo)
+	templateHandler := handlers.NewTemplateHandler(templateRepo, pdfService)
 	aiHandler := handlers.NewAIHandler(aiService, fileParserService)
 	exportHandler := handlers.NewExportHandler(resumeRepo, templateRepo, pdfService)
 
@@ -121,6 +121,7 @@ func (r *Router) Setup() *fiber.App {
 	templateRoutes.Get("/", templateHandler.List)
 	templateRoutes.Get("/:id", templateHandler.GetByID)
 	templateRoutes.Get("/:id/preview", templateHandler.GetPreview)
+	templateRoutes.Get("/:id/preview-image", templateHandler.GetPreviewImage)
 
 	// AI routes (protected)
 	aiRoutes := api.Group("/ai", r.authMiddleware.Protected())

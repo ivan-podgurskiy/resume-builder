@@ -34,6 +34,21 @@
 					<span class="text-xl font-bold">ResumeBuilder</span>
 				</a>
 
+				<div class="flex flex-1 justify-center gap-6">
+					<a
+						href="/templates"
+						class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Templates
+					</a>
+					<a
+						href="/dashboard"
+						class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Dashboard
+					</a>
+				</div>
+
 				<div class="flex items-center space-x-4">
 					<div class="relative">
 						<button

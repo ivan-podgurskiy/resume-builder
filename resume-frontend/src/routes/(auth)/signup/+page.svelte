@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { Button, Card, Input, Label } from '$components/ui';
 	import { auth } from '$stores/auth';
@@ -29,7 +30,8 @@
 		const result = await auth.register(email, password, name);
 
 		if (result.success) {
-			goto('/dashboard');
+			const templateId = $page.url.searchParams.get('template');
+			goto(templateId ? `/dashboard?template=${templateId}` : '/dashboard');
 		} else {
 			error = result.error || 'Failed to create account';
 		}

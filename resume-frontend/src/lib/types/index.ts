@@ -210,6 +210,7 @@ export interface LayoutConfig {
 	photo_position: 'left' | 'right' | 'top' | 'none';
 	section_order: string[];
 	page_break: 'auto' | 'avoid' | 'force';
+	layout_variant?: 'standard' | 'sidebar_dark';
 }
 
 export interface StyleConfig {

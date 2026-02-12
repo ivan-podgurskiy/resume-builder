@@ -95,11 +95,20 @@
 		}
 	}
 
+	function handlePreviewImageError(e: Event) {
+		const img = e.currentTarget as HTMLImageElement | null;
+		if (img) {
+			img.style.display = 'none';
+			const fallback = img.nextElementSibling as HTMLElement | null;
+			if (fallback) fallback.classList.remove('hidden');
+		}
+	}
+
 	$: filteredTemplates = templateFilter === 'all' 
 		? templates 
 		: templates.filter(t => t.category === templateFilter);
 
-	// Template-based styles
+	// Template-based styles for live preview
 	$: templateStyles = currentTemplate?.config?.style || null;
 	$: templateColors = templateStyles?.colors || {
 		primary: '#1a1a1a',
@@ -120,8 +129,11 @@
 		element_gap: 12,
 		page_padding: 32
 	};
+	$: templateColumns = currentTemplate?.config?.layout?.columns ?? 1;
+	$: layoutVariant = currentTemplate?.config?.layout?.layout_variant ?? 'standard';
+	$: isSidebarDarkLayout = layoutVariant === 'sidebar_dark';
+	$: isTwoColumnLayout = templateColumns === 2 && !isSidebarDarkLayout;
 
-	// Get padding based on margins setting
 	function getPadding(margins: string): string {
 		switch (margins) {
 			case 'narrow': return '24px';
@@ -857,7 +869,6 @@
 					<!-- Preview Content -->
 					<div class="flex-1 overflow-y-auto p-6">
 						<div class="mx-auto max-w-[850px]">
-							<!-- Template Name Badge -->
 							{#if currentTemplate}
 								<div class="mb-3 flex items-center justify-center">
 									<span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -866,7 +877,6 @@
 								</div>
 							{/if}
 							
-							<!-- Resume Preview with Dynamic Styles -->
 							<div
 								class="aspect-[8.5/11] rounded-lg border shadow-lg"
 								style="
@@ -878,124 +888,279 @@
 									padding: {getPadding(templateSpacing.margins)};
 								"
 							>
-								<!-- Header -->
-								<div 
-									class="mb-6 pb-4 text-center"
-									style="border-bottom: 2px solid {templateColors.accent};"
-								>
-									<h1 
-										class="text-2xl font-bold"
-										style="font-family: {templateTypography.heading_font}, sans-serif; color: {templateColors.primary};"
-									>
-										{$currentResume.data.personal_info.first_name}
-										{$currentResume.data.personal_info.last_name}
-									</h1>
-									{#if $currentResume.data.personal_info.title}
-										<p class="mt-1 text-lg" style="color: {templateColors.secondary};">
-											{$currentResume.data.personal_info.title}
-										</p>
-									{/if}
-									<div class="mt-2 flex flex-wrap justify-center gap-3 text-sm" style="color: {templateColors.secondary};">
-										{#if $currentResume.data.personal_info.email}
-											<span>{$currentResume.data.personal_info.email}</span>
-										{/if}
-										{#if $currentResume.data.personal_info.phone}
-											<span>{$currentResume.data.personal_info.phone}</span>
-										{/if}
-										{#if $currentResume.data.personal_info.location}
-											<span>{$currentResume.data.personal_info.location}</span>
-										{/if}
-									</div>
-								</div>
-
-								<!-- Summary -->
-								{#if $currentResume.data.summary}
-									<div style="margin-bottom: {templateSpacing.section_gap}px;">
-										<h2 
-											class="mb-2 text-sm font-bold uppercase tracking-wide"
-											style="color: {templateColors.accent};"
-										>
-											Professional Summary
-										</h2>
-										<p class="whitespace-pre-line text-sm">{$currentResume.data.summary}</p>
-									</div>
-								{/if}
-
-								<!-- Experience -->
-								{#if ($currentResume.data.experience || []).length > 0}
-									<div style="margin-bottom: {templateSpacing.section_gap}px;">
-										<h2 
-											class="mb-3 text-sm font-bold uppercase tracking-wide"
-											style="color: {templateColors.accent};"
-										>
-											Experience
-										</h2>
-										{#each ($currentResume.data.experience || []) as exp}
-											<div style="margin-bottom: {templateSpacing.element_gap}px;">
-												<div class="flex items-start justify-between">
-													<div>
-														<h3 class="font-semibold" style="color: {templateColors.primary};">{exp.position}</h3>
-														<p class="text-sm" style="color: {templateColors.secondary};">{exp.company}</p>
-													</div>
-													<span class="text-sm" style="color: {templateColors.secondary};">
-														{exp.start_date} - {exp.is_current ? 'Present' : exp.end_date}
+								{#if isSidebarDarkLayout}
+									<!-- Executive Sidebar: section labels on left align with content on right -->
+									<div class="grid grid-cols-[28%_1fr] overflow-hidden rounded-lg">
+										<!-- Row 0: Photo | Name + Title -->
+										<div class="bg-gray-800 p-4">
+											{#if $currentResume.data.personal_info.photo_url}
+												<div class="mx-auto h-16 w-16 overflow-hidden rounded-full border-2 border-white/30">
+													<img
+														src={$currentResume.data.personal_info.photo_url}
+														alt=""
+														class="h-full w-full object-cover"
+													/>
+												</div>
+											{:else}
+												<div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/30 bg-gray-700 text-white">
+													<span class="text-2xl font-bold text-white/70">
+														{$currentResume.data.personal_info.first_name?.charAt(0) || '?'}
+														{$currentResume.data.personal_info.last_name?.charAt(0) || ''}
 													</span>
 												</div>
-												{#if exp.description}
-													<p class="mt-1 whitespace-pre-line text-sm">{exp.description}</p>
-												{/if}
-											</div>
-										{/each}
-									</div>
-								{/if}
-
-								<!-- Education -->
-								{#if ($currentResume.data.education || []).length > 0}
-									<div style="margin-bottom: {templateSpacing.section_gap}px;">
-										<h2 
-											class="mb-3 text-sm font-bold uppercase tracking-wide"
-											style="color: {templateColors.accent};"
+											{/if}
+										</div>
+										<div
+											class="relative overflow-hidden px-6 pt-4 pb-2"
+											style="background-color: {templateColors.background};"
 										>
-											Education
-										</h2>
-										{#each ($currentResume.data.education || []) as edu}
-											<div style="margin-bottom: {templateSpacing.element_gap}px;">
-												<div class="flex items-start justify-between">
-													<div>
-														<h3 class="font-semibold" style="color: {templateColors.primary};">
-															{edu.degree} in {edu.field_of_study}
-														</h3>
-														<p class="text-sm" style="color: {templateColors.secondary};">{edu.institution}</p>
-													</div>
-													<span class="text-sm" style="color: {templateColors.secondary};">
-														{edu.start_date} - {edu.end_date}
-													</span>
-												</div>
-											</div>
-										{/each}
-									</div>
-								{/if}
-
-								<!-- Skills -->
-								{#if ($currentResume.data.skills.technical || []).length > 0}
-									<div>
-										<h2 
-											class="mb-2 text-sm font-bold uppercase tracking-wide"
-											style="color: {templateColors.accent};"
+											<div
+												class="absolute -top-5 -right-5 h-[120px] w-[120px] opacity-50"
+												style="background: radial-gradient(circle at 100% 0%, {templateColors.primary} 0%, transparent 70%);"
+											></div>
+											<h1
+												class="relative text-xl font-bold"
+												style="font-family: {templateTypography.heading_font}, sans-serif; color: {templateColors.text};"
+											>
+												{$currentResume.data.personal_info.first_name}
+												{$currentResume.data.personal_info.last_name}
+											</h1>
+											{#if $currentResume.data.personal_info.title}
+												<p class="relative mt-1 text-sm" style="color: {templateColors.primary};">
+													{$currentResume.data.personal_info.title}
+												</p>
+											{/if}
+										</div>
+										<!-- Row 1: Profil label | Profile content -->
+										<div class="border-t border-white/30 bg-gray-800 py-2 pl-4 text-xs font-bold uppercase tracking-widest text-white">
+											Profil
+										</div>
+										<div
+											class="border-t px-6 py-3"
+											style="background-color: {templateColors.background}; border-color: {templateColors.accent}20;"
 										>
-											Skills
-										</h2>
-										<div class="flex flex-wrap gap-2">
-											{#each ($currentResume.data.skills.technical || []) as skill}
-												<span 
-													class="rounded px-2 py-1 text-sm"
-													style="background-color: {templateColors.accent}20; color: {templateColors.primary};"
+											{#if $currentResume.data.summary}
+												<p
+													class="whitespace-pre-line border-l-2 pl-3 text-sm"
+													style="border-color: {templateColors.primary}; color: {templateColors.text};"
 												>
-													{skill.name}
-												</span>
-											{/each}
+													{$currentResume.data.summary}
+												</p>
+											{:else}
+												<p class="text-sm" style="color: {templateColors.secondary}; font-style: italic;">—</p>
+											{/if}
+										</div>
+										<!-- Row 2: Experience label | Experience content -->
+										<div class="border-t border-white/30 bg-gray-800 py-2 pl-4 text-xs font-bold uppercase tracking-widest text-white">
+											Experience
+										</div>
+										<div
+											class="border-t px-6 py-3"
+											style="background-color: {templateColors.background}; border-color: {templateColors.accent}20;"
+										>
+											{#if ($currentResume.data.experience || []).length > 0}
+												{#each ($currentResume.data.experience || []) as exp}
+													<div class="mb-3 last:mb-0">
+														<div class="flex items-start justify-between gap-2">
+															<div>
+																<h3 class="font-semibold" style="color: {templateColors.text};">{exp.position}</h3>
+																<p class="text-sm" style="color: {templateColors.secondary};">{exp.company}</p>
+															</div>
+															<span class="shrink-0 text-xs" style="color: {templateColors.secondary};">
+																{exp.start_date} - {exp.is_current ? 'Present' : exp.end_date}
+															</span>
+														</div>
+														{#if exp.description}
+															<p class="mt-1 whitespace-pre-line text-sm" style="color: {templateColors.secondary};">
+																{exp.description}
+															</p>
+														{/if}
+													</div>
+												{/each}
+											{:else}
+												<p class="text-sm" style="color: {templateColors.secondary}; font-style: italic;">—</p>
+											{/if}
+										</div>
+										<!-- Row 3: Education label | Education content -->
+										<div class="border-t border-white/30 bg-gray-800 py-2 pl-4 text-xs font-bold uppercase tracking-widest text-white">
+											Education
+										</div>
+										<div
+											class="border-t px-6 py-3"
+											style="background-color: {templateColors.background}; border-color: {templateColors.accent}20;"
+										>
+											{#if ($currentResume.data.education || []).length > 0}
+												{#each ($currentResume.data.education || []) as edu}
+													<div class="mb-3 last:mb-0">
+														<div class="flex items-start justify-between gap-2">
+															<div>
+																<h3 class="font-semibold" style="color: {templateColors.text};">
+																	{edu.degree}
+																	{#if edu.field_of_study}
+																		in {edu.field_of_study}
+																	{/if}
+																</h3>
+																<p class="text-sm" style="color: {templateColors.secondary};">{edu.institution}</p>
+															</div>
+															<span class="shrink-0 text-xs" style="color: {templateColors.secondary};">
+																{edu.start_date} - {edu.end_date}
+															</span>
+														</div>
+													</div>
+												{/each}
+											{:else}
+												<p class="text-sm" style="color: {templateColors.secondary}; font-style: italic;">—</p>
+											{/if}
 										</div>
 									</div>
+								{:else if isTwoColumnLayout}
+									<div class="grid h-full grid-cols-[1fr_2fr] gap-4">
+										<div class="flex flex-col gap-4 border-r pr-4" style="border-color: {templateColors.accent}30;">
+											<div>
+												<h1 class="text-xl font-bold" style="font-family: {templateTypography.heading_font}, sans-serif; color: {templateColors.primary};">
+													{$currentResume.data.personal_info.first_name} {$currentResume.data.personal_info.last_name}
+												</h1>
+												{#if $currentResume.data.personal_info.title}
+													<p class="mt-0.5 text-sm" style="color: {templateColors.secondary};">
+														{$currentResume.data.personal_info.title}
+													</p>
+												{/if}
+											</div>
+											<div class="flex flex-col gap-1 text-xs" style="color: {templateColors.secondary};">
+												{#if $currentResume.data.personal_info.email}<span>{$currentResume.data.personal_info.email}</span>{/if}
+												{#if $currentResume.data.personal_info.phone}<span>{$currentResume.data.personal_info.phone}</span>{/if}
+												{#if $currentResume.data.personal_info.location}<span>{$currentResume.data.personal_info.location}</span>{/if}
+											</div>
+											{#if ($currentResume.data.skills.technical || []).length > 0}
+												<div>
+													<h2 class="mb-1.5 text-xs font-bold uppercase" style="color: {templateColors.accent};">Skills</h2>
+													<div class="flex flex-wrap gap-1">
+														{#each ($currentResume.data.skills.technical || []) as skill}
+															<span class="rounded px-1.5 py-0.5 text-xs" style="background-color: {templateColors.accent}20; color: {templateColors.primary};">
+																{skill.name}
+															</span>
+														{/each}
+													</div>
+												</div>
+											{/if}
+											{#if ($currentResume.data.education || []).length > 0}
+												<div>
+													<h2 class="mb-1.5 text-xs font-bold uppercase" style="color: {templateColors.accent};">Education</h2>
+													{#each ($currentResume.data.education || []) as edu}
+														<div class="mb-1">
+															<div class="font-semibold" style="color: {templateColors.primary};">{edu.degree}</div>
+															<div class="text-xs" style="color: {templateColors.secondary};">{edu.institution}</div>
+															<div class="text-xs" style="color: {templateColors.secondary};">{edu.start_date} - {edu.end_date}</div>
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</div>
+										<div class="min-w-0 overflow-hidden">
+											{#if $currentResume.data.summary}
+												<div class="mb-4">
+													<h2 class="mb-1.5 text-xs font-bold uppercase" style="color: {templateColors.accent};">Professional Summary</h2>
+													<p class="whitespace-pre-line text-sm">{$currentResume.data.summary}</p>
+												</div>
+											{/if}
+											{#if ($currentResume.data.experience || []).length > 0}
+												<div>
+													<h2 class="mb-2 text-xs font-bold uppercase" style="color: {templateColors.accent};">Experience</h2>
+													{#each ($currentResume.data.experience || []) as exp}
+														<div class="mb-3">
+															<div class="flex items-start justify-between gap-2">
+																<div>
+																	<h3 class="font-semibold" style="color: {templateColors.primary};">{exp.position}</h3>
+																	<p class="text-sm" style="color: {templateColors.secondary};">{exp.company}</p>
+																</div>
+																<span class="shrink-0 text-xs" style="color: {templateColors.secondary};">
+																	{exp.start_date} - {exp.is_current ? 'Present' : exp.end_date}
+																</span>
+															</div>
+															{#if exp.description}
+																<p class="mt-1 whitespace-pre-line text-sm">{exp.description}</p>
+															{/if}
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									</div>
+								{:else}
+									<div class="mb-6 pb-4 text-center" style="border-bottom: 2px solid {templateColors.accent};">
+										<h1 class="text-2xl font-bold" style="font-family: {templateTypography.heading_font}, sans-serif; color: {templateColors.primary};">
+											{$currentResume.data.personal_info.first_name} {$currentResume.data.personal_info.last_name}
+										</h1>
+										{#if $currentResume.data.personal_info.title}
+											<p class="mt-1 text-lg" style="color: {templateColors.secondary};">
+												{$currentResume.data.personal_info.title}
+											</p>
+										{/if}
+										<div class="mt-2 flex flex-wrap justify-center gap-3 text-sm" style="color: {templateColors.secondary};">
+											{#if $currentResume.data.personal_info.email}<span>{$currentResume.data.personal_info.email}</span>{/if}
+											{#if $currentResume.data.personal_info.phone}<span>{$currentResume.data.personal_info.phone}</span>{/if}
+											{#if $currentResume.data.personal_info.location}<span>{$currentResume.data.personal_info.location}</span>{/if}
+										</div>
+									</div>
+									{#if $currentResume.data.summary}
+										<div style="margin-bottom: {templateSpacing.section_gap}px;">
+											<h2 class="mb-2 text-sm font-bold uppercase tracking-wide" style="color: {templateColors.accent};">Professional Summary</h2>
+											<p class="whitespace-pre-line text-sm">{$currentResume.data.summary}</p>
+										</div>
+									{/if}
+									{#if ($currentResume.data.experience || []).length > 0}
+										<div style="margin-bottom: {templateSpacing.section_gap}px;">
+											<h2 class="mb-3 text-sm font-bold uppercase tracking-wide" style="color: {templateColors.accent};">Experience</h2>
+											{#each ($currentResume.data.experience || []) as exp}
+												<div style="margin-bottom: {templateSpacing.element_gap}px;">
+													<div class="flex items-start justify-between">
+														<div>
+															<h3 class="font-semibold" style="color: {templateColors.primary};">{exp.position}</h3>
+															<p class="text-sm" style="color: {templateColors.secondary};">{exp.company}</p>
+														</div>
+														<span class="text-sm" style="color: {templateColors.secondary};">
+															{exp.start_date} - {exp.is_current ? 'Present' : exp.end_date}
+														</span>
+													</div>
+													{#if exp.description}
+														<p class="mt-1 whitespace-pre-line text-sm">{exp.description}</p>
+													{/if}
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if ($currentResume.data.education || []).length > 0}
+										<div style="margin-bottom: {templateSpacing.section_gap}px;">
+											<h2 class="mb-3 text-sm font-bold uppercase tracking-wide" style="color: {templateColors.accent};">Education</h2>
+											{#each ($currentResume.data.education || []) as edu}
+												<div style="margin-bottom: {templateSpacing.element_gap}px;">
+													<div class="flex items-start justify-between">
+														<div>
+															<h3 class="font-semibold" style="color: {templateColors.primary};">
+																{edu.degree} in {edu.field_of_study}
+															</h3>
+															<p class="text-sm" style="color: {templateColors.secondary};">{edu.institution}</p>
+														</div>
+														<span class="text-sm" style="color: {templateColors.secondary};">
+															{edu.start_date} - {edu.end_date}
+														</span>
+													</div>
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if ($currentResume.data.skills.technical || []).length > 0}
+										<div>
+											<h2 class="mb-2 text-sm font-bold uppercase tracking-wide" style="color: {templateColors.accent};">Skills</h2>
+											<div class="flex flex-wrap gap-2">
+												{#each ($currentResume.data.skills.technical || []) as skill}
+													<span class="rounded px-2 py-1 text-sm" style="background-color: {templateColors.accent}20; color: {templateColors.primary};">
+														{skill.name}
+													</span>
+												{/each}
+											</div>
+										</div>
+									{/if}
 								{/if}
 							</div>
 						</div>
@@ -1224,9 +1389,9 @@
 		role="dialog"
 		tabindex="-1"
 	>
-		<Card class="flex max-h-[90vh] w-full max-w-4xl flex-col">
+		<Card class="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden">
 			<!-- Modal Header -->
-			<div class="flex items-center justify-between border-b p-4">
+			<div class="flex shrink-0 items-center justify-between border-b p-4">
 				<div>
 					<h2 class="text-xl font-semibold">Choose a Template</h2>
 					<p class="text-sm text-muted-foreground">Select a template that best fits your needs</p>
@@ -1239,8 +1404,8 @@
 				</button>
 			</div>
 
-			<!-- Category Filter -->
-			<div class="flex gap-2 overflow-x-auto border-b px-4 py-3">
+			<!-- Category Filter - wrap instead of scroll so nothing is cut off -->
+			<div class="flex shrink-0 flex-wrap gap-2 border-b px-4 py-3">
 				{#each templateCategories as category}
 					<button
 						class="whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors {templateFilter === category.id
@@ -1253,8 +1418,8 @@
 				{/each}
 			</div>
 
-			<!-- Templates Grid -->
-			<div class="flex-1 overflow-y-auto p-4">
+			<!-- Templates Grid - min-h-0 allows flex child to shrink and scroll -->
+			<div class="min-h-0 flex-1 overflow-y-auto p-4">
 				{#if isLoadingTemplates}
 					<div class="flex items-center justify-center py-12">
 						<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1264,32 +1429,31 @@
 						No templates found in this category
 					</div>
 				{:else}
-					<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
+					<div class="grid grid-cols-2 gap-6 sm:grid-cols-3">
 						{#each filteredTemplates as template (template.id)}
 							<button
-								class="group relative overflow-hidden rounded-lg border-2 transition-all hover:shadow-lg {selectedTemplateId === template.id
+								class="group relative flex flex-col overflow-hidden rounded-xl border-2 transition-all hover:shadow-lg {selectedTemplateId === template.id
 									? 'border-primary ring-2 ring-primary ring-offset-2'
 									: 'border-transparent hover:border-muted-foreground/20'}"
 								on:click={() => (selectedTemplateId = template.id)}
 							>
-								<!-- Template Preview Image -->
-								<div class="aspect-[8.5/11] bg-muted">
-									{#if template.preview_image_url}
-										<img
-											src={template.preview_image_url}
-											alt={template.name}
-											class="h-full w-full object-cover"
-										/>
-									{:else}
-										<!-- Placeholder preview -->
-										<div class="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-											<Layout class="h-12 w-12 text-gray-400" />
-										</div>
-									{/if}
+								<!-- Template Preview Image - no scrollbars, clean display -->
+								<div class="relative aspect-[8.5/11] min-h-0 shrink-0 overflow-hidden rounded-t-lg bg-white">
+									<img
+										src={template.preview_image_url || `/api/v1/templates/${template.id}/preview-image`}
+										alt={template.name}
+										class="block h-full w-full object-cover object-top"
+										on:error={handlePreviewImageError}
+									/>
+									<div
+										class="absolute inset-0 hidden flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+									>
+										<Layout class="h-12 w-12 text-gray-400" />
+									</div>
 								</div>
 
 								<!-- Template Info -->
-								<div class="p-3 text-left">
+								<div class="shrink-0 p-3 text-left">
 									<div class="flex items-center justify-between">
 										<h3 class="font-medium">{template.name}</h3>
 										<div class="flex items-center gap-1">
@@ -1325,7 +1489,7 @@
 			</div>
 
 			<!-- Modal Footer -->
-			<div class="flex items-center justify-end gap-3 border-t p-4">
+			<div class="flex shrink-0 items-center justify-end gap-3 border-t p-4">
 				<Button variant="outline" on:click={() => (showTemplateModal = false)}>
 					Cancel
 				</Button>
