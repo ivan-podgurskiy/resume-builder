@@ -261,6 +261,53 @@ class APIClient {
 		return result.data;
 	}
 
+	async extractResumeFromFile(file: File): Promise<ResumeData> {
+		const formData = new FormData();
+		formData.append('file', file);
+
+		const headers: Record<string, string> = {};
+		if (this.accessToken) {
+			headers['Authorization'] = `Bearer ${this.accessToken}`;
+		}
+
+		const response = await fetch(`${API_BASE}/ai/extract-file`, {
+			method: 'POST',
+			headers,
+			body: formData
+		});
+
+		if (response.status === 401 && this.refreshToken) {
+			const refreshed = await this.refreshAccessToken();
+			if (refreshed) {
+				headers['Authorization'] = `Bearer ${this.accessToken}`;
+				const retryResponse = await fetch(`${API_BASE}/ai/extract-file`, {
+					method: 'POST',
+					headers,
+					body: formData
+				});
+				if (!retryResponse.ok) {
+					const error = await retryResponse.json().catch(() => ({ error: 'Upload failed' }));
+					throw new Error(error.error || 'Failed to extract resume from file');
+				}
+				const result = await retryResponse.json();
+				return result.data;
+			}
+		}
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+			throw new Error(error.error || 'Failed to extract resume from file');
+		}
+
+		const result = await response.json();
+		return result.data;
+	}
+
+	async getSupportedFormats(): Promise<string[]> {
+		const result = await this.request<{ formats: string[] }>('/ai/supported-formats');
+		return result.formats;
+	}
+
 	async improveText(text: string, context?: string): Promise<{ improved_text: string }> {
 		return this.request('/ai/improve', {
 			method: 'POST',

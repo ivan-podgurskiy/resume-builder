@@ -1,14 +1,16 @@
+# Production docker-compose for VPS deployment
+# Deploy to: resume.ivanpodgurskiy.name
+# Services bind to 127.0.0.1 - Nginx proxies to frontend on port 4000
+
 services:
-  # PostgreSQL Database (using port 5433 to avoid conflicts)
   postgres:
     image: postgres:16-alpine
     container_name: resume-postgres
+    restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: resume_builder
-    ports:
-      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,13 +18,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - resume-network
 
-  # Redis for caching and job queue
   redis:
     image: redis:7-alpine
     container_name: resume-redis
-    ports:
-      - "6380:6379"
+    restart: always
     volumes:
       - redis_data:/data
     healthcheck:
@@ -30,42 +32,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - resume-network
 
-  # Backend API
   backend:
     build:
       context: ./resume-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.runtime
     container_name: resume-backend
-    ports:
-      - "8080:8080"
+    restart: always
     env_file:
       - ./resume-backend/.env
     environment:
-      # Override database/redis URLs for Docker networking
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/resume_builder?sslmode=disable
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/resume_builder?sslmode=disable
       - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=production
+      - CORS_ORIGINS=https://resume.ivanpodgurskiy.name
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - resume-network
 
-  # Frontend (SvelteKit)
   frontend:
     build:
       context: ./resume-frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.runtime
     container_name: resume-frontend
+    restart: always
     ports:
-      - "4000:3000"
+      - "127.0.0.1:4000:3000"
     environment:
       - NODE_ENV=production
-      - PUBLIC_API_URL=http://localhost:8080
       - BACKEND_URL=http://backend:8080
     depends_on:
       - backend
+    networks:
+      - resume-network
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  resume-network:
+    driver: bridge

@@ -8,8 +8,10 @@ import (
 
 func NewCORSMiddleware(cfg *config.Config) fiber.Handler {
 	allowedOrigins := "http://localhost:5173,http://localhost:3000"
-	if cfg.IsProduction() {
-		allowedOrigins = "https://resume-builder.com,https://www.resume-builder.com"
+	if cfg.IsProduction() && cfg.CORSOrigins != "" {
+		allowedOrigins = cfg.CORSOrigins
+	} else if cfg.IsProduction() {
+		allowedOrigins = "https://resume.ivanpodgurskiy.name"
 	}
 
 	return cors.New(cors.Config{

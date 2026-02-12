@@ -1,0 +1,17 @@
+# Runtime-only: expects pre-built binary from local build
+# Usage: build Go binary locally first, then docker build
+#   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/api
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata chromium
+
+ENV CHROME_PATH=/usr/bin/chromium-browser
+
+WORKDIR /app
+
+COPY main .
+
+EXPOSE 8080
+
+CMD ["./main"]

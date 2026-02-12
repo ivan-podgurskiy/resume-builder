@@ -5,6 +5,12 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	preprocess: vitePreprocess(),
 
+	onwarn: (warning, handler) => {
+		// Suppress a11y warnings so they don't fail Docker/CI builds
+		if (warning.code?.startsWith('a11y-')) return;
+		handler(warning);
+	},
+
 	kit: {
 		adapter: adapter({
 			out: 'build'

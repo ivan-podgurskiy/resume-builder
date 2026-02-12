@@ -235,6 +235,10 @@ func buildResumeTemplate(config *models.TemplateConfig) string {
 			border-bottom: 1px solid #e5e7eb;
 		}
 		
+		.summary-text {
+			white-space: pre-line;
+		}
+		
 		.entry {
 			margin-bottom: {{.Config.Style.Spacing.ElementGap}}px;
 		}
@@ -263,6 +267,7 @@ func buildResumeTemplate(config *models.TemplateConfig) string {
 		.entry-description {
 			margin-top: 4px;
 			color: #374151;
+			white-space: pre-line;
 		}
 		
 		.skills-list {
@@ -309,7 +314,7 @@ func buildResumeTemplate(config *models.TemplateConfig) string {
 		{{if .Data.Summary}}
 		<div class="section">
 			<h2 class="section-title">Professional Summary</h2>
-			<p>{{.Data.Summary}}</p>
+			<p class="summary-text">{{.Data.Summary}}</p>
 		</div>
 		{{end}}
 		

@@ -1,0 +1,21 @@
+# Runtime-only: expects pre-built frontend from local build
+# Usage: run `npm run build` locally first, then docker build
+# Requires: build/ directory, package.json, package-lock.json
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install production dependencies only (no compile)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Copy pre-built SvelteKit output
+COPY build ./build
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+EXPOSE 3000
+
+CMD ["node", "build"]

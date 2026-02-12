@@ -9,6 +9,7 @@ import (
 	"github.com/resume-builder/backend/internal/repository"
 	"github.com/resume-builder/backend/internal/service/ai"
 	"github.com/resume-builder/backend/internal/service/auth"
+	"github.com/resume-builder/backend/internal/service/fileparser"
 	"github.com/resume-builder/backend/internal/service/pdf"
 	"github.com/resume-builder/backend/internal/service/resume"
 	"gorm.io/gorm"
@@ -74,12 +75,13 @@ func (r *Router) Setup() *fiber.App {
 	resumeService := resume.NewResumeService(resumeRepo, userRepo, templateRepo)
 	aiService := ai.NewAIService(r.config)
 	pdfService := pdf.NewPDFService()
+	fileParserService := fileparser.NewFileParserService()
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	resumeHandler := handlers.NewResumeHandler(resumeService)
 	templateHandler := handlers.NewTemplateHandler(templateRepo)
-	aiHandler := handlers.NewAIHandler(aiService)
+	aiHandler := handlers.NewAIHandler(aiService, fileParserService)
 	exportHandler := handlers.NewExportHandler(resumeRepo, templateRepo, pdfService)
 
 	// API routes
@@ -123,6 +125,8 @@ func (r *Router) Setup() *fiber.App {
 	// AI routes (protected)
 	aiRoutes := api.Group("/ai", r.authMiddleware.Protected())
 	aiRoutes.Post("/extract", aiHandler.ExtractData)
+	aiRoutes.Post("/extract-file", aiHandler.ExtractFromFile)
+	aiRoutes.Get("/supported-formats", aiHandler.GetSupportedFormats)
 	aiRoutes.Post("/improve", aiHandler.ImproveText)
 	aiRoutes.Post("/generate-summary", aiHandler.GenerateSummary)
 	aiRoutes.Post("/analyze-job", aiHandler.AnalyzeJob)

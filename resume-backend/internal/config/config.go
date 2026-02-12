@@ -41,6 +41,9 @@ type Config struct {
 
 	// File Upload
 	MaxFileSize int64
+
+	// CORS (comma-separated list of allowed origins in production)
+	CORSOrigins string
 }
 
 func Load() (*Config, error) {
@@ -80,6 +83,9 @@ func Load() (*Config, error) {
 
 		// File Upload
 		MaxFileSize: int64(getEnvInt("MAX_FILE_SIZE_MB", 10)) * 1024 * 1024, // 10MB default
+
+		// CORS
+		CORSOrigins: getEnv("CORS_ORIGINS", "https://resume.ivanpodgurskiy.name"),
 	}
 
 	return cfg, nil

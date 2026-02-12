@@ -35,6 +35,7 @@ coverage/
 *.test
 *.out
 go.work
+resume-backend/main
 
 # Docker
 .docker/

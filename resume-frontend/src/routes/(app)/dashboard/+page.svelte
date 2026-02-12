@@ -13,7 +13,9 @@
 		Trash2,
 		ExternalLink,
 		Clock,
-		Loader2
+		Loader2,
+		File as FileIcon,
+		X
 	} from 'lucide-svelte';
 	import { formatDate } from '$utils';
 	import { api } from '$lib/api/client';
@@ -26,6 +28,15 @@
 	let isImporting = false;
 	let importError = '';
 	let activeMenu: string | null = null;
+	
+	// File upload state
+	let importMode: 'text' | 'file' = 'file';
+	let selectedFile: File | null = null;
+	let isDragging = false;
+	let fileInputRef: HTMLInputElement;
+
+	const supportedFormats = ['.pdf', '.docx', '.doc', '.txt'];
+	const acceptedFileTypes = supportedFormats.join(',');
 
 	onMount(() => {
 		resumeStore.loadResumes();
@@ -40,10 +51,80 @@
 		}
 	}
 
-	async function importResume() {
-		if (!importText.trim()) {
-			importError = 'Please paste your resume text';
+	function handleFileSelect(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (input.files && input.files.length > 0) {
+			validateAndSetFile(input.files[0]);
+		}
+	}
+
+	function handleDrop(event: DragEvent) {
+		event.preventDefault();
+		isDragging = false;
+		
+		if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+			validateAndSetFile(event.dataTransfer.files[0]);
+		}
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		isDragging = true;
+	}
+
+	function handleDragLeave() {
+		isDragging = false;
+	}
+
+	function validateAndSetFile(file: File) {
+		importError = '';
+		
+		// Check file extension
+		const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+		if (!supportedFormats.includes(ext)) {
+			importError = `Unsupported file type. Please upload: ${supportedFormats.join(', ')}`;
 			return;
+		}
+		
+		// Check file size (10MB max)
+		if (file.size > 10 * 1024 * 1024) {
+			importError = 'File too large. Maximum size is 10MB.';
+			return;
+		}
+		
+		selectedFile = file;
+		
+		// Auto-set title from filename
+		const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+		if (importTitle === 'Imported Resume') {
+			importTitle = nameWithoutExt;
+		}
+	}
+
+	function removeFile() {
+		selectedFile = null;
+		if (fileInputRef) {
+			fileInputRef.value = '';
+		}
+	}
+
+	function formatFileSize(bytes: number): string {
+		if (bytes < 1024) return bytes + ' B';
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+		return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+	}
+
+	async function importResume() {
+		if (importMode === 'file') {
+			if (!selectedFile) {
+				importError = 'Please select a file to upload';
+				return;
+			}
+		} else {
+			if (!importText.trim()) {
+				importError = 'Please paste your resume text';
+				return;
+			}
 		}
 
 		isImporting = true;
@@ -51,7 +132,12 @@
 
 		try {
 			// Extract data using AI
-			const extractedData = await api.extractResumeData(importText);
+			let extractedData;
+			if (importMode === 'file' && selectedFile) {
+				extractedData = await api.extractResumeFromFile(selectedFile);
+			} else {
+				extractedData = await api.extractResumeData(importText);
+			}
 
 			// Create a new resume with the extracted data
 			const resume = await resumeStore.createResume({
@@ -62,6 +148,7 @@
 			showImportModal = false;
 			importText = '';
 			importTitle = 'Imported Resume';
+			selectedFile = null;
 			goto(`/resumes/${resume.id}/edit`);
 		} catch (error) {
 			console.error('Failed to import resume:', error);
@@ -265,8 +352,33 @@
 		<Card class="w-full max-w-2xl p-6">
 			<h2 class="mb-2 text-xl font-semibold">Import Resume</h2>
 			<p class="mb-4 text-sm text-muted-foreground">
-				Paste your resume text below and our AI will extract the information automatically.
+				Upload a file or paste text and our AI will extract the information automatically.
 			</p>
+			
+			<!-- Import Mode Tabs -->
+			<div class="mb-4 flex border-b">
+				<button
+					type="button"
+					class="px-4 py-2 text-sm font-medium transition-colors {importMode === 'file' 
+						? 'border-b-2 border-primary text-primary' 
+						: 'text-muted-foreground hover:text-foreground'}"
+					on:click={() => (importMode = 'file')}
+				>
+					<FileIcon class="mr-2 inline-block h-4 w-4" />
+					Upload File
+				</button>
+				<button
+					type="button"
+					class="px-4 py-2 text-sm font-medium transition-colors {importMode === 'text' 
+						? 'border-b-2 border-primary text-primary' 
+						: 'text-muted-foreground hover:text-foreground'}"
+					on:click={() => (importMode = 'text')}
+				>
+					<FileText class="mr-2 inline-block h-4 w-4" />
+					Paste Text
+				</button>
+			</div>
+
 			<form on:submit|preventDefault={importResume}>
 				<div class="mb-4">
 					<label for="importTitle" class="mb-2 block text-sm font-medium">Resume Title</label>
@@ -278,13 +390,72 @@
 						placeholder="e.g., My Imported Resume"
 					/>
 				</div>
-				<div class="mb-4">
-					<label for="importText" class="mb-2 block text-sm font-medium">Resume Content</label>
-					<textarea
-						id="importText"
-						bind:value={importText}
-						class="flex min-h-[300px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-						placeholder="Paste your resume text here...
+
+				{#if importMode === 'file'}
+					<!-- File Upload Area -->
+					<div class="mb-4">
+						<label class="mb-2 block text-sm font-medium">Resume File</label>
+						<div
+							class="relative rounded-lg border-2 border-dashed transition-colors {isDragging 
+								? 'border-primary bg-primary/5' 
+								: 'border-muted-foreground/25 hover:border-muted-foreground/50'}"
+							on:drop={handleDrop}
+							on:dragover={handleDragOver}
+							on:dragleave={handleDragLeave}
+						>
+							{#if selectedFile}
+								<!-- Selected File Display -->
+								<div class="flex items-center gap-3 p-4">
+									<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+										<FileIcon class="h-6 w-6 text-primary" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate font-medium">{selectedFile.name}</p>
+										<p class="text-sm text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+									</div>
+									<button
+										type="button"
+										class="rounded-full p-1 hover:bg-muted"
+										on:click={removeFile}
+										disabled={isImporting}
+									>
+										<X class="h-5 w-5" />
+									</button>
+								</div>
+							{:else}
+								<!-- Drop Zone -->
+								<div class="flex flex-col items-center justify-center p-8 text-center">
+									<Upload class="mb-3 h-10 w-10 text-muted-foreground" />
+									<p class="mb-1 text-sm font-medium">
+										Drag and drop your resume here
+									</p>
+									<p class="mb-3 text-xs text-muted-foreground">
+										or click to browse
+									</p>
+									<p class="text-xs text-muted-foreground">
+										Supported formats: PDF, DOCX, DOC, TXT (max 10MB)
+									</p>
+								</div>
+								<input
+									bind:this={fileInputRef}
+									type="file"
+									accept={acceptedFileTypes}
+									class="absolute inset-0 cursor-pointer opacity-0"
+									on:change={handleFileSelect}
+									disabled={isImporting}
+								/>
+							{/if}
+						</div>
+					</div>
+				{:else}
+					<!-- Text Paste Area -->
+					<div class="mb-4">
+						<label for="importText" class="mb-2 block text-sm font-medium">Resume Content</label>
+						<textarea
+							id="importText"
+							bind:value={importText}
+							class="flex min-h-[250px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+							placeholder="Paste your resume text here...
 
 Example:
 John Doe
@@ -298,9 +469,11 @@ Senior Developer at Tech Corp (2020-Present)
 
 EDUCATION
 BS Computer Science, State University (2016)"
-						disabled={isImporting}
-					></textarea>
-				</div>
+							disabled={isImporting}
+						></textarea>
+					</div>
+				{/if}
+
 				{#if importError}
 					<div class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
 						{importError}
@@ -314,6 +487,7 @@ BS Computer Science, State University (2016)"
 							showImportModal = false;
 							importError = '';
 							importText = '';
+							selectedFile = null;
 						}}
 						disabled={isImporting}
 					>

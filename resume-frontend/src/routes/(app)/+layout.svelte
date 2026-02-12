@@ -29,7 +29,7 @@
 		<!-- Top Navigation -->
 		<nav class="border-b bg-background">
 			<div class="flex h-16 items-center justify-between px-6">
-				<a href="/dashboard" class="flex items-center space-x-2">
+				<a href="/" class="flex items-center space-x-2">
 					<FileText class="h-6 w-6 text-primary" />
 					<span class="text-xl font-bold">ResumeBuilder</span>
 				</a>

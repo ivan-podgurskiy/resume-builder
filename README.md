@@ -67,10 +67,30 @@ resume-builder/
 
 - Go 1.22+
 - Node.js 20+
+- Docker & Docker Compose (for backend stack)
 - PostgreSQL 16
 - Redis (for background jobs)
 
-### Backend Setup
+### Development (Recommended)
+
+Run backend and frontend separately so you can change the frontend without rebuilding Docker:
+
+**Terminal 1 – Backend (Docker):**
+```bash
+make dev-backend
+# or: docker compose up postgres redis backend
+```
+
+**Terminal 2 – Frontend (local, hot reload):**
+```bash
+make dev-frontend
+# or: cd resume-frontend && npm run dev
+```
+
+- Backend: `http://localhost:8080`
+- Frontend: `http://localhost:5173` (proxies API requests to backend)
+
+### Backend Setup (without Docker)
 
 1. Navigate to the backend directory:
    ```bash
