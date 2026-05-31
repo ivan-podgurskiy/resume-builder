@@ -365,9 +365,13 @@
 
 <!-- New Resume Modal -->
 {#if showNewResumeModal}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 		on:click|self={() => (showNewResumeModal = false)}
+		on:keydown={(e) => e.key === 'Escape' && (showNewResumeModal = false)}
+		role="dialog"
+		tabindex="-1"
 	>
 		<Card class="flex max-h-[90vh] w-full max-w-4xl flex-col">
 			<div class="flex items-center justify-between border-b p-4">
@@ -454,9 +458,13 @@
 
 <!-- Import Resume Modal -->
 {#if showImportModal}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 		on:click|self={() => (showImportModal = false)}
+		on:keydown={(e) => e.key === 'Escape' && (showImportModal = false)}
+		role="dialog"
+		tabindex="-1"
 	>
 		<Card class="w-full max-w-2xl p-6">
 			<h2 class="mb-2 text-xl font-semibold">Import Resume</h2>
@@ -503,7 +511,8 @@
 				{#if importMode === 'file'}
 					<!-- File Upload Area -->
 					<div class="mb-4">
-						<label class="mb-2 block text-sm font-medium">Resume File</label>
+						<span class="mb-2 block text-sm font-medium">Resume File</span>
+						<!-- svelte-ignore a11y-no-static-element-interactions -->
 						<div
 							class="relative rounded-lg border-2 border-dashed transition-colors {isDragging 
 								? 'border-primary bg-primary/5' 

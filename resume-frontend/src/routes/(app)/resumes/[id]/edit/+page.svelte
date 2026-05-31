@@ -32,6 +32,15 @@
 	import type { Experience, Education, ResumeData, Template } from '$types';
 	import { api } from '$lib/api/client';
 
+	// Typed helpers for reading values off form-control events. Custom UI
+	// components forward the DOM event, so `currentTarget` is `EventTarget | null`.
+	function inputValue(e: Event): string {
+		return (e.currentTarget as HTMLInputElement | HTMLTextAreaElement).value;
+	}
+	function inputChecked(e: Event): boolean {
+		return (e.currentTarget as HTMLInputElement).checked;
+	}
+
 	let saveStatus = 'saved';
 	let showExportModal = false;
 	let showPreviewModal = false;
@@ -169,7 +178,7 @@
 		expandedSections[sectionId] = !expandedSections[sectionId];
 	}
 
-	$: resumeId = $page.params.id;
+	$: resumeId = $page.params.id ?? '';
 
 	// Auto-save when data changes
 	function handleChange() {
@@ -409,7 +418,7 @@
 					value={$currentResume.title}
 					class="border-0 bg-transparent text-lg font-semibold focus:outline-none focus:ring-0"
 					on:change={(e) => {
-						resumeStore.updateResume(resumeId, { title: e.currentTarget.value });
+						resumeStore.updateResume(resumeId, { title: inputValue(e) });
 					}}
 				/>
 				<span class="flex items-center text-sm text-muted-foreground">
@@ -488,7 +497,7 @@
 												<Input
 													id="firstName"
 													value={$currentResume.data.personal_info.first_name}
-													on:input={(e) => updatePersonalInfo('first_name', e.currentTarget.value)}
+													on:input={(e) => updatePersonalInfo('first_name', inputValue(e))}
 													placeholder="John"
 												/>
 											</div>
@@ -497,7 +506,7 @@
 												<Input
 													id="lastName"
 													value={$currentResume.data.personal_info.last_name}
-													on:input={(e) => updatePersonalInfo('last_name', e.currentTarget.value)}
+													on:input={(e) => updatePersonalInfo('last_name', inputValue(e))}
 													placeholder="Doe"
 												/>
 											</div>
@@ -507,7 +516,7 @@
 											<Input
 												id="title"
 												value={$currentResume.data.personal_info.title}
-												on:input={(e) => updatePersonalInfo('title', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('title', inputValue(e))}
 												placeholder="Senior Software Engineer"
 											/>
 										</div>
@@ -517,7 +526,7 @@
 												id="email"
 												type="email"
 												value={$currentResume.data.personal_info.email}
-												on:input={(e) => updatePersonalInfo('email', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('email', inputValue(e))}
 												placeholder="john@example.com"
 											/>
 										</div>
@@ -526,7 +535,7 @@
 											<Input
 												id="phone"
 												value={$currentResume.data.personal_info.phone}
-												on:input={(e) => updatePersonalInfo('phone', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('phone', inputValue(e))}
 												placeholder="+1 (555) 123-4567"
 											/>
 										</div>
@@ -535,7 +544,7 @@
 											<Input
 												id="location"
 												value={$currentResume.data.personal_info.location}
-												on:input={(e) => updatePersonalInfo('location', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('location', inputValue(e))}
 												placeholder="San Francisco, CA"
 											/>
 										</div>
@@ -544,7 +553,7 @@
 											<Input
 												id="linkedin"
 												value={$currentResume.data.personal_info.linkedin || ''}
-												on:input={(e) => updatePersonalInfo('linkedin', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('linkedin', inputValue(e))}
 												placeholder="linkedin.com/in/johndoe"
 											/>
 										</div>
@@ -553,7 +562,7 @@
 											<Input
 												id="website"
 												value={$currentResume.data.personal_info.website || ''}
-												on:input={(e) => updatePersonalInfo('website', e.currentTarget.value)}
+												on:input={(e) => updatePersonalInfo('website', inputValue(e))}
 												placeholder="johndoe.com"
 											/>
 										</div>
@@ -589,7 +598,7 @@
 											<Textarea
 												id="summary"
 												value={$currentResume.data.summary}
-												on:input={(e) => updateSummary(e.currentTarget.value)}
+												on:input={(e) => updateSummary(inputValue(e))}
 												placeholder="Write a brief summary of your professional background and career goals..."
 												rows={6}
 											/>
@@ -641,7 +650,7 @@
 														<Label>Position</Label>
 														<Input
 															value={exp.position}
-															on:input={(e) => updateExperience(index, 'position', e.currentTarget.value)}
+															on:input={(e) => updateExperience(index, 'position', inputValue(e))}
 															placeholder="Software Engineer"
 														/>
 													</div>
@@ -649,7 +658,7 @@
 														<Label>Company</Label>
 														<Input
 															value={exp.company}
-															on:input={(e) => updateExperience(index, 'company', e.currentTarget.value)}
+															on:input={(e) => updateExperience(index, 'company', inputValue(e))}
 															placeholder="Acme Inc."
 														/>
 													</div>
@@ -660,7 +669,7 @@
 																type="month"
 																value={exp.start_date}
 																on:input={(e) =>
-																	updateExperience(index, 'start_date', e.currentTarget.value)}
+																	updateExperience(index, 'start_date', inputValue(e))}
 															/>
 														</div>
 														<div>
@@ -669,7 +678,7 @@
 																type="month"
 																value={exp.end_date}
 																on:input={(e) =>
-																	updateExperience(index, 'end_date', e.currentTarget.value)}
+																	updateExperience(index, 'end_date', inputValue(e))}
 																disabled={exp.is_current}
 															/>
 														</div>
@@ -679,7 +688,7 @@
 															type="checkbox"
 															checked={exp.is_current}
 															on:change={(e) =>
-																updateExperience(index, 'is_current', e.currentTarget.checked)}
+																updateExperience(index, 'is_current', inputChecked(e))}
 															class="rounded border-input"
 														/>
 														Currently working here
@@ -695,7 +704,7 @@
 														<Textarea
 															value={exp.description}
 															on:input={(e) =>
-																updateExperience(index, 'description', e.currentTarget.value)}
+																updateExperience(index, 'description', inputValue(e))}
 															placeholder="Describe your responsibilities and achievements..."
 															rows={4}
 														/>
@@ -755,7 +764,7 @@
 														<Input
 															value={edu.institution}
 															on:input={(e) =>
-																updateEducation(index, 'institution', e.currentTarget.value)}
+																updateEducation(index, 'institution', inputValue(e))}
 															placeholder="University of California"
 														/>
 													</div>
@@ -763,7 +772,7 @@
 														<Label>Degree</Label>
 														<Input
 															value={edu.degree}
-															on:input={(e) => updateEducation(index, 'degree', e.currentTarget.value)}
+															on:input={(e) => updateEducation(index, 'degree', inputValue(e))}
 															placeholder="Bachelor of Science"
 														/>
 													</div>
@@ -772,7 +781,7 @@
 														<Input
 															value={edu.field_of_study}
 															on:input={(e) =>
-																updateEducation(index, 'field_of_study', e.currentTarget.value)}
+																updateEducation(index, 'field_of_study', inputValue(e))}
 															placeholder="Computer Science"
 														/>
 													</div>
@@ -783,7 +792,7 @@
 																type="month"
 																value={edu.start_date}
 																on:input={(e) =>
-																	updateEducation(index, 'start_date', e.currentTarget.value)}
+																	updateEducation(index, 'start_date', inputValue(e))}
 															/>
 														</div>
 														<div>
@@ -792,7 +801,7 @@
 																type="month"
 																value={edu.end_date}
 																on:input={(e) =>
-																	updateEducation(index, 'end_date', e.currentTarget.value)}
+																	updateEducation(index, 'end_date', inputValue(e))}
 															/>
 														</div>
 													</div>
@@ -829,7 +838,7 @@
 											<Textarea
 												id="technicalSkills"
 												value={($currentResume.data.skills.technical || []).map((s) => s.name).join(', ')}
-												on:input={(e) => updateSkills('technical', e.currentTarget.value)}
+												on:input={(e) => updateSkills('technical', inputValue(e))}
 												placeholder="JavaScript, TypeScript, React, Node.js..."
 												rows={3}
 											/>
@@ -840,7 +849,7 @@
 											<Textarea
 												id="softSkills"
 												value={$currentResume.data.skills.soft?.join(', ') || ''}
-												on:input={(e) => updateSkills('soft', e.currentTarget.value)}
+												on:input={(e) => updateSkills('soft', inputValue(e))}
 												placeholder="Leadership, Communication, Problem-solving..."
 												rows={3}
 											/>
@@ -1182,6 +1191,7 @@
 
 <!-- Export Modal -->
 {#if showExportModal}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 		on:click|self={() => (showExportModal = false)}
@@ -1258,6 +1268,7 @@
 
 <!-- Preview Modal -->
 {#if showPreviewModal && $currentResume}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8"
 		on:click|self={() => (showPreviewModal = false)}
@@ -1382,6 +1393,7 @@
 
 <!-- Template Selection Modal -->
 {#if showTemplateModal}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 		on:click|self={() => (showTemplateModal = false)}
