@@ -180,7 +180,7 @@ npm run check     # svelte-check (type + a11y)
 - [x] Public resume sharing (backend endpoint + visibility toggle)
 
 ### Phase 2 — Growth (in progress)
-- [ ] Public share page (frontend `/share/[slug]` viewer) — backend endpoint exists
+- [x] Public share page (frontend `/share/[slug]` viewer, template-aware, print-friendly)
 - [ ] Tailor-to-job / ATS keyword match UI — `analyze-job` backend exists
 - [ ] Cover letter generator
 - [ ] LinkedIn import
